@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -9,10 +10,14 @@ import {
   View,
 } from "react-native";
 
+import ExpenseCard from "../components/ExpenseCard";
 import { initDb } from "../db/init";
-import { ExpenseGroup, groupExpensesByDay } from "../features/expenses/expense.group";
+import {
+  ExpenseGroup,
+  groupExpensesByDay,
+} from "../features/expenses/expense.group";
 import { listExpensesForMonth } from "../features/expenses/expenses.repo";
-import { Expense } from "../features/expenses/expenses.types";
+import type { Expense } from "../features/expenses/expenses.types";
 import { useTheme } from "../theme/useTheme";
 import ExpenseModal from "./ExpenseModal";
 
@@ -36,11 +41,7 @@ export default function History() {
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
 
-  useEffect(() => {
-    reload();
-  }, [year, month]);
-
-  async function reload() {
+  const reload = useCallback(async () => {
     setLoading(true);
     setOffset(0);
     setHasMore(true);
@@ -58,7 +59,13 @@ export default function History() {
     setOffset(rows.length);
     setHasMore(rows.length === PAGE_SIZE);
     setLoading(false);
-  }
+  }, [year, month]);
+
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+    }, [reload])
+  );
 
   async function loadNextPage() {
     if (!hasMore || loading) return;
@@ -83,16 +90,9 @@ export default function History() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.card }}>
-      {/* Month / Year selector */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 16,
-        }}
-      >
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      {/* Month selector */}
+      <View style={styles.monthBar}>
         <TouchableOpacity
           onPress={() => {
             if (month === 0) {
@@ -103,21 +103,10 @@ export default function History() {
             }
           }}
         >
-          <Ionicons
-            name="chevron-back"
-            size={20}
-            color={theme.text}
-          />
+          <Ionicons name="chevron-back" size={20} color={theme.text} />
         </TouchableOpacity>
 
-        <Text
-          style={{
-            marginHorizontal: 12,
-            fontSize: 16,
-            fontWeight: "600",
-            color: theme.text,
-          }}
-        >
+        <Text style={[styles.monthText, { color: theme.text }]}>
           {MONTHS[month]} {year}
         </Text>
 
@@ -131,11 +120,7 @@ export default function History() {
             }
           }}
         >
-          <Ionicons
-            name="chevron-forward"
-            size={20}
-            color={theme.text}
-          />
+          <Ionicons name="chevron-forward" size={20} color={theme.text} />
         </TouchableOpacity>
       </View>
 
@@ -148,104 +133,47 @@ export default function History() {
           keyExtractor={item => item.day}
           onEndReached={loadNextPage}
           onEndReachedThreshold={0.5}
+          contentContainerStyle={{ paddingBottom: 24 }}
           renderItem={({ item }) => (
             <View
               style={[
                 styles.dayCard,
-                {
-                  backgroundColor: theme.card,
-                  borderColor: theme.border,
-                },
+                { backgroundColor: theme.card },
               ]}
             >
-              {/* Date header */}
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: 8,
-                }}
-              >
-                <Text
-                  style={[
-                    styles.dayHeader,
-                    { color: theme.subtext },
-                  ]}
-                >
+              {/* Day header */}
+              <View style={styles.dayHeaderRow}>
+                <Text style={[styles.dayHeader, { color: theme.text }]}>
                   {item.day}
                 </Text>
 
-                <Text
-                  style={[
-                    styles.dayTotal,
-                    { color: theme.text },
-                  ]}
-                >
+                <Text style={[styles.dayTotal, { color: theme.subtext }]}>
                   ₹{(item.total / 100).toFixed(2)}
                 </Text>
               </View>
-
-
-              {/* Expenses of the day */}
-              {item.expenses.map((e, index) => (
-                <TouchableOpacity
+              {item.expenses.map(e => (
+                <ExpenseCard
                   key={e.id}
+                  expense={e}
                   onPress={() => setEditing(e)}
-                >
-                  <View key={e.id}>
-                    <View style={styles.row}>
-                      <View style={styles.rowLeft}>
-                        <Text
-                          style={[
-                            styles.note,
-                            { color: theme.text },
-                          ]}
-                          numberOfLines={1}
-                        >
-                          {e.note ?? e.categoryId}
-                        </Text>
-                      </View>
-
-                      <Text
-                        style={[
-                          styles.amount,
-                          { color: theme.text },
-                        ]}
-                      >
-                        ₹{(e.amount / 100).toFixed(2)}
-                      </Text>
-                    </View>
-
-                    {/* Divider between rows */}
-                    {index < item.expenses.length - 1 && (
-                      <View
-                        style={[
-                          styles.divider,
-                          { backgroundColor: theme.border },
-                        ]}
-                      />
-                    )}
-                  </View>
-                </TouchableOpacity>
+                />
               ))}
             </View>
-          )
-          }
-
+          )}
           ListFooterComponent={
             loading ? <ActivityIndicator /> : null
           }
         />
       )}
+
       {editing && (
         <ExpenseModal
-          visible={true}
+          visible
           expense={editing}
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);
-            reload(); // reload current month
+            reload();
           }}
           onDeleted={() => {
             setEditing(null);
@@ -253,52 +181,85 @@ export default function History() {
           }}
         />
       )}
-
-    </View >
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  dayCard: {
-    borderRadius: 12,
-    padding: 12,
-    marginHorizontal: 16,
-    marginBottom: 12,
+  container: {
+    flex: 1,
   },
 
-  dayHeader: {
-    fontSize: 14,
+  monthBar: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
+  },
+
+  monthText: {
+    marginHorizontal: 12,
+    fontSize: 16,
     fontWeight: "600",
+  },
+
+  dayCard: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 14,
+    padding: 14,
+  },
+
+  dayHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
   },
 
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 6,
+  dayHeader: {
+    fontSize: 15,
+    fontWeight: "600",
   },
 
-  rowLeft: {
+  dayTotal: {
+    fontSize: 14,
+  },
+
+  expenseCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    borderRadius: 12,
+    marginTop: 10,
+  },
+
+  iconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+
+  expenseMiddle: {
     flex: 1,
     marginRight: 12,
   },
 
-  note: {
+  category: {
     fontSize: 14,
+    fontWeight: "500",
+  },
+
+  note: {
+    fontSize: 13,
+    marginTop: 2,
   },
 
   amount: {
     fontSize: 14,
     fontWeight: "600",
   },
-
-  divider: {
-    height: 1,
-    marginVertical: 6,
-  },
-  dayTotal: {
-    fontSize: 14,
-    fontWeight: 600,
-  },
-
 });

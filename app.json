@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "expense",
+    "name": "DaySpend",
     "slug": "expense",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "expense",
+    "scheme": "day-spend",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -14,14 +14,11 @@
     "android": {
       "newArchEnabled": true,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#E6F4FE"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.rahulaswin.expense"
+      "package": "com.ash.dayspend"
     },
     "web": {
       "output": "static",

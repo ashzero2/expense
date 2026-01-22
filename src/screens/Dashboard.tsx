@@ -1,11 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback, useState } from "react";
 import {
   StyleSheet,
   Text,
   TouchableOpacity,
   View
 } from "react-native";
+import ExpenseCard from "../components/ExpenseCard";
 import { initDb } from "../db/init";
 import {
   getTotalForMonth,
@@ -20,31 +22,38 @@ export default function DashboardScreen() {
   const [monthTotal, setMonthTotal] = useState(0);
   const [today, setToday] = useState<Expense[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [editing, setEditing] = useState<Expense | null>(null);
 
-  useEffect(() => {
-    (async () => {
-      await initDb();
+  useFocusEffect(
+    useCallback(() => {
+      loadDashboard();
+    }, [])
+  );
 
-      const now = new Date();
-      const total = await getTotalForMonth(
-        now.getFullYear(),
-        now.getMonth()
-      );
+  async function loadDashboard() {
+    await initDb();
 
-      const todayExpenses = await listTodayExpenses();
+    const now = new Date();
 
-      setMonthTotal(total);
-      setToday(todayExpenses);
-    })();
-  }, []);
+    const total = await getTotalForMonth(
+      now.getFullYear(),
+      now.getMonth()
+    );
+
+    const todayExpenses = await listTodayExpenses();
+
+    setMonthTotal(total);
+    setToday(todayExpenses);
+  }
+
 
   return (
     <View style={styles.container}>
       {/* Top card */}
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: theme.card }]}>
         <Text style={styles.cardTitle}>This Month</Text>
         <Text style={styles.cardAmount}>
-          ₹{(monthTotal / 100).toFixed(2)}
+          ₹ {(monthTotal / 100).toFixed(2)}
         </Text>
       </View>
 
@@ -60,38 +69,11 @@ export default function DashboardScreen() {
           </Text>
         ) : (
           today.map(expense => (
-            <View
+            <ExpenseCard
               key={expense.id}
-              style={[
-                styles.expenseRow,
-                { borderBottomColor: theme.border },
-              ]}
-            >
-              {/* Left */}
-              <View style={styles.expenseLeft}>
-                <Text
-                  style={[styles.category, { color: theme.text }]}
-                >
-                  {expense.categoryId}
-                </Text>
-
-                {expense.note && (
-                  <Text
-                    style={[styles.note, { color: theme.subtext }]}
-                    numberOfLines={1}
-                  >
-                    {expense.note}
-                  </Text>
-                )}
-              </View>
-
-              {/* Right */}
-              <Text
-                style={[styles.amount, { color: theme.text }]}
-              >
-                ₹{(expense.amount / 100).toFixed(2)}
-              </Text>
-            </View>
+              expense={expense}
+              onPress={() => setEditing(expense)}
+            />
           ))
         )}
       </View>
@@ -115,6 +97,21 @@ export default function DashboardScreen() {
           setToday(await listTodayExpenses());
         }}
       />
+      {editing && (
+        <ExpenseModal
+          visible
+          expense={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            loadDashboard();
+          }}
+          onDeleted={() => {
+            setEditing(null);
+            loadDashboard();
+          }}
+        />
+      )}
     </View>
   );
 }
@@ -201,5 +198,26 @@ const styles = StyleSheet.create({
   category: {
     fontSize: 15,
     fontWeight: "500",
+  },
+  expenseCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 14,
+    borderRadius: 12,
+    marginTop: 10,
+  },
+
+  iconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+
+  expenseMiddle: {
+    flex: 1,
+    marginRight: 12,
   },
 });

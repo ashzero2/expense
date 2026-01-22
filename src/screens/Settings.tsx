@@ -5,8 +5,9 @@ import {
 } from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 
-import { Alert, Text, TouchableOpacity, View } from "react-native";
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
+import { Ionicons } from "@expo/vector-icons";
 import { clearAllExpenses } from "../db/admin";
 import { initDb } from "../db/init";
 import { exportExpensesCsv } from "../features/expenses/expenses.export";
@@ -57,66 +58,133 @@ export default function SettingsScreen() {
 
   return (
     <View
-      style={{
-        flex: 1,
-        padding: 16,
-        backgroundColor: theme.card,
-      }}
+      style={[
+        styles.container,
+        { backgroundColor: theme.background },
+      ]}
     >
-      {/* Export */}
-      <TouchableOpacity
-        onPress={handleExport}
-        style={{ paddingVertical: 16 }}
-      >
-        <Text style={{ color: theme.text, fontSize: 16 }}>
-          Export data as CSV
-        </Text>
-      </TouchableOpacity>
+      {/* DATA */}
+      <Text style={[styles.sectionLabel, { color: theme.subtext }]}>
+        Data
+      </Text>
 
       <View
-        style={{
-          height: 1,
-          backgroundColor: theme.border,
-          marginVertical: 16,
-        }}
-      />
+        style={[
+          styles.card,
+          { backgroundColor: theme.card },
+        ]}
+      >
+        <TouchableOpacity style={styles.row} onPress={handleExport}>
+          <View style={styles.rowLeft}>
+            <Ionicons
+              name="download-outline"
+              size={18}
+              color={theme.primary}
+            />
+            <Text style={[styles.rowText, { color: theme.text }]}>
+              Export data as CSV
+            </Text>
+          </View>
 
-      {/* Danger zone */}
+          <Ionicons
+            name="chevron-forward"
+            size={16}
+            color={theme.subtext}
+          />
+        </TouchableOpacity>
+      </View>
+
+      {/* DANGER */}
       <Text
-        style={{
-          color: theme.subtext,
-          marginBottom: 8,
-        }}
+        style={[
+          styles.sectionLabel,
+          { color: theme.danger, marginTop: 24 },
+        ]}
       >
         Danger zone
       </Text>
 
-      <TouchableOpacity
-        onPress={confirmClear}
-        style={{ paddingVertical: 16 }}
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: theme.card },
+        ]}
       >
-        <Text
-          style={{
-            color: "#EF4444",
-            fontSize: 16,
+        <TouchableOpacity
+          style={styles.row}
+          onPress={() => {
+            confirmClear();
           }}
         >
-          Clear all data
-        </Text>
-      </TouchableOpacity>
+          <View style={styles.rowLeft}>
+            <Ionicons
+              name="trash-outline"
+              size={18}
+              color={theme.danger}
+            />
+            <Text
+              style={[
+                styles.rowText,
+                { color: theme.danger },
+              ]}
+            >
+              Clear all data
+            </Text>
+          </View>
+        </TouchableOpacity>
+      </View>
 
-      <View
-        style={{
-          height: 1,
-          backgroundColor: theme.border,
-          marginVertical: 16,
-        }}
-      />
-
-      {/* App info */}
-      <Text style={{ color: theme.subtext }}>
+      {/* VERSION */}
+      <Text
+        style={[
+          styles.version,
+          { color: theme.subtext },
+        ]}
+      >
         Version 1.0.0
       </Text>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 16,
+  },
+
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+
+  card: {
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 14,
+  },
+
+  rowLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+
+  rowText: {
+    fontSize: 15,
+    fontWeight: "500",
+  },
+
+  version: {
+    marginTop: 32,
+    textAlign: "center",
+    fontSize: 13,
+  },
+});
