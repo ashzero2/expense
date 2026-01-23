@@ -3,6 +3,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   StyleSheet,
   Text,
@@ -11,54 +12,48 @@ import {
 } from "react-native";
 
 import ExpenseCard from "../components/ExpenseCard";
-import { initDb } from "../db/init";
 import {
   ExpenseGroup,
   groupExpensesByDay,
 } from "../features/expenses/expense.group";
 import { listExpensesForMonth } from "../features/expenses/expenses.repo";
 import type { Expense } from "../features/expenses/expenses.types";
+import { MONTHS } from "../shared/config";
+import { useMonthNavigation } from "../shared/hooks/useMonthNavigation";
 import { useTheme } from "../theme/useTheme";
 import ExpenseModal from "./ExpenseModal";
 
 const PAGE_SIZE = 30;
 
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
-
 export default function History() {
   const theme = useTheme();
-
-  const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth());
+  const { year, month, goToPreviousMonth, goToNextMonth } = useMonthNavigation();
 
   const [groups, setGroups] = useState<ExpenseGroup[]>([]);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     setLoading(true);
     setOffset(0);
     setHasMore(true);
+    setError(null);
 
-    await initDb();
-
-    const rows = await listExpensesForMonth(
-      year,
-      month,
-      PAGE_SIZE,
-      0
-    );
-
-    setGroups(groupExpensesByDay(rows));
-    setOffset(rows.length);
-    setHasMore(rows.length === PAGE_SIZE);
-    setLoading(false);
+    try {
+      const rows = await listExpensesForMonth(year, month, PAGE_SIZE, 0);
+      setGroups(groupExpensesByDay(rows));
+      setOffset(rows.length);
+      setHasMore(rows.length === PAGE_SIZE);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to load expenses";
+      setError(message);
+      Alert.alert("Error", message);
+    } finally {
+      setLoading(false);
+    }
   }, [year, month]);
 
   useFocusEffect(
@@ -72,37 +67,29 @@ export default function History() {
 
     setLoading(true);
 
-    const rows = await listExpensesForMonth(
-      year,
-      month,
-      PAGE_SIZE,
-      offset
-    );
+    try {
+      const rows = await listExpensesForMonth(year, month, PAGE_SIZE, offset);
 
-    setGroups(prev => {
-      const all = prev.flatMap(g => g.expenses).concat(rows);
-      return groupExpensesByDay(all);
-    });
+      setGroups(prev => {
+        const all = prev.flatMap(g => g.expenses).concat(rows);
+        return groupExpensesByDay(all);
+      });
 
-    setOffset(offset + rows.length);
-    setHasMore(rows.length === PAGE_SIZE);
-    setLoading(false);
+      setOffset(o => o + rows.length);
+      setHasMore(rows.length === PAGE_SIZE);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to load more";
+      Alert.alert("Error", message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Month selector */}
       <View style={styles.monthBar}>
-        <TouchableOpacity
-          onPress={() => {
-            if (month === 0) {
-              setMonth(11);
-              setYear(y => y - 1);
-            } else {
-              setMonth(m => m - 1);
-            }
-          }}
-        >
+        <TouchableOpacity onPress={goToPreviousMonth}>
           <Ionicons name="chevron-back" size={20} color={theme.text} />
         </TouchableOpacity>
 
@@ -110,23 +97,24 @@ export default function History() {
           {MONTHS[month]} {year}
         </Text>
 
-        <TouchableOpacity
-          onPress={() => {
-            if (month === 11) {
-              setMonth(0);
-              setYear(y => y + 1);
-            } else {
-              setMonth(m => m + 1);
-            }
-          }}
-        >
+        <TouchableOpacity onPress={goToNextMonth}>
           <Ionicons name="chevron-forward" size={20} color={theme.text} />
         </TouchableOpacity>
       </View>
 
+      {/* Error state */}
+      {error && (
+        <View style={[styles.errorCard, { backgroundColor: theme.danger }]}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity onPress={reload}>
+            <Text style={styles.retryText}>Tap to retry</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Expense list */}
       {loading && groups.length === 0 ? (
-        <ActivityIndicator />
+        <ActivityIndicator style={styles.centered} />
       ) : (
         <FlatList
           data={groups}
@@ -134,19 +122,17 @@ export default function History() {
           onEndReached={loadNextPage}
           onEndReachedThreshold={0.5}
           contentContainerStyle={{ paddingBottom: 24 }}
+          ListEmptyComponent={
+            <Text style={[styles.emptyText, { color: theme.subtext }]}>
+              No expenses for this month
+            </Text>
+          }
           renderItem={({ item }) => (
-            <View
-              style={[
-                styles.dayCard,
-                { backgroundColor: theme.card },
-              ]}
-            >
-              {/* Day header */}
+            <View style={[styles.dayCard, { backgroundColor: theme.card }]}>
               <View style={styles.dayHeaderRow}>
                 <Text style={[styles.dayHeader, { color: theme.text }]}>
                   {item.day}
                 </Text>
-
                 <Text style={[styles.dayTotal, { color: theme.subtext }]}>
                   ₹{(item.total / 100).toFixed(2)}
                 </Text>
@@ -160,9 +146,7 @@ export default function History() {
               ))}
             </View>
           )}
-          ListFooterComponent={
-            loading ? <ActivityIndicator /> : null
-          }
+          ListFooterComponent={loading ? <ActivityIndicator /> : null}
         />
       )}
 
@@ -226,40 +210,36 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
-  expenseCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
+  errorCard: {
+    marginHorizontal: 16,
     borderRadius: 12,
-    marginTop: 10,
-  },
-
-  iconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    padding: 16,
+    marginBottom: 16,
     alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
   },
 
-  expenseMiddle: {
-    flex: 1,
-    marginRight: 12,
-  },
-
-  category: {
+  errorText: {
+    color: "#FFFFFF",
     fontSize: 14,
     fontWeight: "500",
   },
 
-  note: {
-    fontSize: 13,
-    marginTop: 2,
+  retryText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    marginTop: 8,
+    textDecorationLine: "underline",
   },
 
-  amount: {
+  centered: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  emptyText: {
+    textAlign: "center",
+    marginTop: 40,
     fontSize: 14,
-    fontWeight: "600",
   },
 });

@@ -9,33 +9,34 @@ import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
 import { clearAllExpenses } from "../db/admin";
-import { initDb } from "../db/init";
 import { exportExpensesCsv } from "../features/expenses/expenses.export";
 import { useTheme } from "../theme/useTheme";
 
 export default function SettingsScreen() {
   const theme = useTheme();
 
-
   async function handleExport() {
-    await initDb();
+    try {
+      const csv = await exportExpensesCsv();
 
-    const csv = await exportExpensesCsv();
+      if (!documentDirectory) {
+        throw new Error("Document directory not available");
+      }
 
-    if (!documentDirectory) {
-      throw new Error("Document directory not available");
+      const path = documentDirectory + "expenses.csv";
+
+      await writeAsStringAsync(path, csv, {
+        encoding: "utf8",
+      });
+
+      await Sharing.shareAsync(path, {
+        mimeType: "text/csv",
+        dialogTitle: "Export expenses",
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to export data";
+      Alert.alert("Export Failed", message);
     }
-
-    const path = documentDirectory + "expenses.csv";
-
-    await writeAsStringAsync(path, csv, {
-      encoding: "utf8",
-    });
-
-    await Sharing.shareAsync(path, {
-      mimeType: "text/csv",
-      dialogTitle: "Export expenses",
-    });
   }
 
   function confirmClear() {
@@ -48,8 +49,12 @@ export default function SettingsScreen() {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
-            await initDb();
-            await clearAllExpenses();
+            try {
+              await clearAllExpenses();
+              Alert.alert("Success", "All data has been cleared");
+            } catch {
+              Alert.alert("Error", "Failed to clear data");
+            }
           },
         },
       ]

@@ -14,32 +14,33 @@ export const palette = {
   gray: "#ABB2BF",
 };
 
+const lightBaseSurface = "#F3F4F6";
 export const lightTheme: Theme = {
-  background: palette.bg,
-  surface: "#1F2329",
-  card: "#2C313A",
+  background: "#FFFFFF",
+  surface: lightBaseSurface,
+  surfaceRaised: adjustHex(lightBaseSurface, -10),
+  surfacePressed: adjustHex(lightBaseSurface, -20),
+  card: "#F9FAFB",
 
-  text: "#FFFFFF",
-  subtext: palette.gray,
-  border: "#3E4451",
+  text: "#111827",
+  subtext: "#6B7280",
+  border: "#E5E7EB",
 
-  primary: palette.blue,
-  accent: palette.teal,
+  primary: "#3B82F6",
+  accent: "#06B6D4",
 
-  success: palette.green,
-  warning: palette.yellow,
-  danger: palette.red,
+  success: "#10B981",
+  warning: "#F59E0B",
+  danger: "#EF4444",
 
   chart: {
-    blue: palette.blue,
-    green: palette.green,
-    yellow: palette.yellow,
-    red: palette.red,
-    purple: palette.purple,
-    teal: palette.teal,
+    blue: "#3B82F6",
+    green: "#10B981",
+    yellow: "#F59E0B",
+    red: "#EF4444",
+    purple: "#8B5CF6",
+    teal: "#06B6D4",
   },
-  surfaceRaised: "",
-  surfacePressed: ""
 };
 
 const baseSurface = "#1F2329";

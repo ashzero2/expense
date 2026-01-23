@@ -7,6 +7,7 @@ import {
 } from "react-native";
 
 import type { Expense } from "../features/expenses/expenses.types";
+import { formatCategoryName } from "../shared/config";
 import { CATEGORY_ICONS, getCategoryColor } from "../theme/categoryColors";
 import { useTheme } from "../theme/useTheme";
 
@@ -51,7 +52,7 @@ export default function ExpenseCard({
       <View style={styles.middle}>
         {showCategory && (
           <Text style={[styles.category, { color: theme.text }]}>
-            {expense.categoryId}
+            {formatCategoryName(expense.categoryId)}
           </Text>
         )}
 

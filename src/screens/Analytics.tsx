@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   ScrollView,
   StyleSheet,
@@ -11,67 +12,73 @@ import {
 } from "react-native";
 import { BarChart, LineChart, PieChart } from "react-native-chart-kit";
 
-import { initDb } from "../db/init";
 import {
   getLastNMonthTotals,
   getMonthlyCategoryTotals,
   MonthlyCategoryTotal,
   MonthlyTotal,
 } from "../features/expenses/expenses.repo";
+import { formatCategoryName, MONTHS, PIE_COLORS } from "../shared/config";
+import { useMonthNavigation } from "../shared/hooks/useMonthNavigation";
 import { useTheme } from "../theme/useTheme";
 
 const screenWidth = Dimensions.get("window").width;
 
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
-
-const PIE_COLORS = [
-  "#60A5FA",
-  "#34D399",
-  "#FBBF24",
-  "#F87171",
-  "#A78BFA",
-  "#FB923C",
-];
-
 export default function Analytics() {
   const theme = useTheme();
+  const { year, month, goToPreviousMonth, goToNextMonth } = useMonthNavigation();
 
-  const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth());
-
-  const [categoryData, setCategoryData] =
-    useState<MonthlyCategoryTotal[]>([]);
+  const [categoryData, setCategoryData] = useState<MonthlyCategoryTotal[]>([]);
   const [trend, setTrend] = useState<MonthlyTotal[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    let isCancelled = false;
+    setLoading(true);
+    setError(null);
+
+    try {
+      const [rows, trendRows] = await Promise.all([
+        getMonthlyCategoryTotals(year, month),
+        getLastNMonthTotals(6),
+      ]);
+
+      if (!isCancelled) {
+        setCategoryData(rows);
+        setTrend(trendRows);
+      }
+    } catch (err) {
+      if (!isCancelled) {
+        const message = err instanceof Error ? err.message : "Failed to load data";
+        setError(message);
+        Alert.alert("Error", message);
+      }
+    } finally {
+      if (!isCancelled) {
+        setLoading(false);
+      }
+    }
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [year, month]);
 
   useEffect(() => {
     load();
-  }, [year, month]);
+  }, [load]);
 
-  async function load() {
-    setLoading(true);
-    await initDb();
-
-    const rows = await getMonthlyCategoryTotals(year, month);
-    setCategoryData(rows);
-
-    const trendRows = await getLastNMonthTotals(6);
-    setTrend(trendRows);
-
-    setLoading(false);
-  }
-
+  // Safe chart data - prevent crashes with empty arrays
   const barChartData = {
-    labels: categoryData.map(d => d.categoryId),
-    datasets: [{ data: categoryData.map(d => d.total / 100) }],
+    labels: categoryData.length > 0 ? categoryData.map(d => formatCategoryName(d.categoryId)) : [""],
+    datasets: [{
+      data: categoryData.length > 0 ? categoryData.map(d => d.total / 100) : [0],
+    }],
   };
 
   const pieData = categoryData.map((d, index) => ({
-    name: d.categoryId,
+    name: formatCategoryName(d.categoryId),
     amount: d.total,
     color: PIE_COLORS[index % PIE_COLORS.length],
     legendFontColor: theme.text,
@@ -79,10 +86,12 @@ export default function Analytics() {
   }));
 
   const lineChartData = {
-    labels: trend.map(
-      t => `${MONTHS[t.month].slice(0, 3)} ${String(t.year).slice(-2)}`
-    ),
-    datasets: [{ data: trend.map(t => t.total / 100) }],
+    labels: trend.length > 0
+      ? trend.map(t => `${MONTHS[t.month].slice(0, 3)} ${String(t.year).slice(-2)}`)
+      : [""],
+    datasets: [{
+      data: trend.length > 0 ? trend.map(t => t.total / 100) : [0],
+    }],
   };
 
   return (
@@ -93,16 +102,7 @@ export default function Analytics() {
       >
         {/* Month selector */}
         <View style={styles.monthBar}>
-          <TouchableOpacity
-            onPress={() => {
-              if (month === 0) {
-                setMonth(11);
-                setYear(y => y - 1);
-              } else {
-                setMonth(m => m - 1);
-              }
-            }}
-          >
+          <TouchableOpacity onPress={goToPreviousMonth}>
             <Ionicons name="chevron-back" size={20} color={theme.text} />
           </TouchableOpacity>
 
@@ -110,19 +110,19 @@ export default function Analytics() {
             {MONTHS[month]} {year}
           </Text>
 
-          <TouchableOpacity
-            onPress={() => {
-              if (month === 11) {
-                setMonth(0);
-                setYear(y => y + 1);
-              } else {
-                setMonth(m => m + 1);
-              }
-            }}
-          >
+          <TouchableOpacity onPress={goToNextMonth}>
             <Ionicons name="chevron-forward" size={20} color={theme.text} />
           </TouchableOpacity>
         </View>
+
+        {error && (
+          <View style={[styles.errorCard, { backgroundColor: theme.danger }]}>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity onPress={load}>
+              <Text style={styles.retryText}>Tap to retry</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Monthly category bar chart */}
         <Text style={[styles.sectionTitle, { color: theme.text }]}>
@@ -166,18 +166,26 @@ export default function Analytics() {
         </Text>
 
         <View style={[styles.card, { backgroundColor: theme.card }]}>
-          <PieChart
-            data={pieData}
-            width={screenWidth - 64}
-            height={220}
-            accessor="amount"
-            backgroundColor="transparent"
-            paddingLeft="16"
-            absolute
-            chartConfig={{
-              color: () => theme.text,
-            }}
-          />
+          {loading ? (
+            <ActivityIndicator />
+          ) : categoryData.length === 0 ? (
+            <Text style={{ color: theme.subtext }}>
+              No data to display
+            </Text>
+          ) : (
+            <PieChart
+              data={pieData}
+              width={screenWidth - 64}
+              height={220}
+              accessor="amount"
+              backgroundColor="transparent"
+              paddingLeft="16"
+              absolute
+              chartConfig={{
+                color: () => theme.text,
+              }}
+            />
+          )}
         </View>
 
         {/* Line chart */}
@@ -186,7 +194,9 @@ export default function Analytics() {
         </Text>
 
         <View style={[styles.card, { backgroundColor: theme.card }]}>
-          {trend.length === 0 ? (
+          {loading ? (
+            <ActivityIndicator />
+          ) : trend.length === 0 ? (
             <Text style={{ color: theme.subtext }}>
               Not enough data yet
             </Text>
@@ -252,5 +262,25 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
+  },
+
+  errorCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    alignItems: "center",
+  },
+
+  errorText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+
+  retryText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    marginTop: 8,
+    textDecorationLine: "underline",
   },
 });

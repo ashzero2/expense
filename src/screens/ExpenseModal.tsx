@@ -1,6 +1,6 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { randomUUID } from "expo-crypto";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -35,27 +35,23 @@ export default function ExpenseModal({
   onDeleted,
 }: Props) {
   const theme = useTheme();
-  const styles = createStyleSheet(theme);
+  const styles = useMemo(() => createStyleSheet(theme), [theme]);
 
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
-  const [categories, setCategories] = useState<
-    { id: string; name: string }[]
-  >([]);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [date, setDate] = useState<Date>(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!visible) return;
 
-    listCategories().then(cats =>
-      setCategories(
-        cats.map(c => ({ id: c.id, name: c.name }))
-      )
-    );
-
-    if (!visible) return;
+    listCategories()
+      .then(cats => setCategories(cats.map(c => ({ id: c.id, name: c.name }))))
+      .catch(() => Alert.alert("Error", "Failed to load categories"));
 
     if (expense) {
       setAmount((expense.amount / 100).toString());
@@ -68,36 +64,91 @@ export default function ExpenseModal({
       setCategoryId(null);
       setDate(new Date());
     }
+    setValidationError(null);
   }, [visible, expense]);
 
-  async function save() {
+  function validate(): boolean {
     const value = Math.round(Number(amount) * 100);
-    if (!value || value <= 0 || !categoryId) return;
 
-    const occurredAt = date.getTime();
-
-    if (expense) {
-      await updateExpense(expense.id, {
-        amount: value,
-        categoryId,
-        note: note.trim() || null,
-        occurredAt,
-      });
-    } else {
-      const now = Date.now();
-
-      await createExpense({
-        id: randomUUID(),
-        amount: value,
-        categoryId,
-        note: note.trim() || null,
-        occurredAt,
-        createdAt: now,
-        updatedAt: now,
-      });
+    if (!amount.trim()) {
+      setValidationError("Please enter an amount");
+      return false;
     }
 
-    onSaved();
+    if (isNaN(value) || value <= 0) {
+      setValidationError("Please enter a valid positive amount");
+      return false;
+    }
+
+    if (!categoryId) {
+      setValidationError("Please select a category");
+      return false;
+    }
+
+    setValidationError(null);
+    return true;
+  }
+
+  async function save() {
+    if (!validate()) return;
+
+    setSaving(true);
+
+    try {
+      const value = Math.round(Number(amount) * 100);
+      const occurredAt = date.getTime();
+
+      if (expense) {
+        await updateExpense(expense.id, {
+          amount: value,
+          categoryId: categoryId!,
+          note: note.trim() || null,
+          occurredAt,
+        });
+      } else {
+        const now = Date.now();
+        await createExpense({
+          id: randomUUID(),
+          amount: value,
+          categoryId: categoryId!,
+          note: note.trim() || null,
+          occurredAt,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+
+      onSaved();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to save expense";
+      Alert.alert("Error", message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!expense) return;
+
+    Alert.alert(
+      "Delete expense",
+      "This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteExpense(expense.id);
+              onDeleted?.();
+            } catch {
+              Alert.alert("Error", "Failed to delete expense");
+            }
+          },
+        },
+      ]
+    );
   }
 
   return (
@@ -111,26 +162,34 @@ export default function ExpenseModal({
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.backdrop}
       >
-        <View
-          style={[
-            styles.container,
-            { backgroundColor: theme.background },
-          ]}
-        >
+        <View style={[styles.container, { backgroundColor: theme.card }]}>
           <Text style={[styles.title, { color: theme.text }]}>
-            Add Expense
+            {expense ? "Edit Expense" : "Add Expense"}
           </Text>
+
+          {/* Validation Error */}
+          {validationError && (
+            <View style={[styles.errorBanner, { backgroundColor: theme.danger }]}>
+              <Text style={styles.errorBannerText}>{validationError}</Text>
+            </View>
+          )}
 
           {/* Amount */}
           <TextInput
-            placeholder="69 Rs"
+            placeholder="Amount (₹)"
             placeholderTextColor={theme.subtext}
             keyboardType="decimal-pad"
             value={amount}
-            onChangeText={setAmount}
+            onChangeText={text => {
+              setAmount(text);
+              setValidationError(null);
+            }}
             style={[
               styles.amountInput,
-              { color: theme.text, borderColor: theme.border },
+              {
+                color: theme.text,
+                borderColor: validationError && !amount.trim() ? theme.danger : theme.border,
+              },
             ]}
           />
 
@@ -139,18 +198,21 @@ export default function ExpenseModal({
             {categories.map(c => (
               <TouchableOpacity
                 key={c.id}
-                onPress={() => setCategoryId(c.id)}
+                onPress={() => {
+                  setCategoryId(c.id);
+                  setValidationError(null);
+                }}
                 style={[
                   styles.category,
                   {
-                    borderColor:
-                      categoryId === c.id
-                        ? theme.primary
-                        : theme.border,
+                    borderColor: categoryId === c.id ? theme.primary : theme.border,
+                    backgroundColor: categoryId === c.id ? theme.primary + "20" : "transparent",
                   },
                 ]}
               >
-                <Text style={{ color: theme.text }}>{c.name}</Text>
+                <Text style={{ color: categoryId === c.id ? theme.primary : theme.text }}>
+                  {c.name}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -158,19 +220,10 @@ export default function ExpenseModal({
           {/* Date */}
           <TouchableOpacity
             onPress={() => setShowDatePicker(true)}
-            style={[
-              styles.input,
-              {
-                justifyContent: "center",
-                borderColor: theme.border,
-              },
-            ]}
+            style={[styles.input, { justifyContent: "center", borderColor: theme.border }]}
           >
-            <Text style={{ color: theme.text }}>
-              {date.toDateString()}
-            </Text>
+            <Text style={{ color: theme.text }}>{date.toDateString()}</Text>
           </TouchableOpacity>
-
 
           {/* Note */}
           <TextInput
@@ -178,47 +231,25 @@ export default function ExpenseModal({
             placeholderTextColor={theme.subtext}
             value={note}
             onChangeText={setNote}
-            style={[
-              styles.input,
-              { color: theme.text, borderColor: theme.border },
-            ]}
+            style={[styles.input, { color: theme.text, borderColor: theme.border }]}
           />
 
           {/* Actions */}
           <View style={styles.actions}>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity onPress={onClose} disabled={saving}>
               <Text style={{ color: theme.subtext }}>Cancel</Text>
             </TouchableOpacity>
 
             {expense && (
-              <TouchableOpacity
-                onPress={() => {
-                  Alert.alert(
-                    "Delete expense",
-                    "This action cannot be undone.",
-                    [
-                      { text: "Cancel", style: "cancel" },
-                      {
-                        text: "Delete",
-                        style: "destructive",
-                        onPress: async () => {
-                          await deleteExpense(expense.id);
-                          onDeleted?.();
-                        },
-                      },
-                    ]
-                  );
-                }}
-              >
-                <Text style={{ color: "#EF4444" }}>
-                  Delete expense
-                </Text>
+              <TouchableOpacity onPress={handleDelete} disabled={saving}>
+                <Text style={{ color: theme.danger }}>Delete</Text>
               </TouchableOpacity>
             )}
 
-
-            <TouchableOpacity onPress={save}>
-              <Text style={{ color: theme.primary }}>Save</Text>
+            <TouchableOpacity onPress={save} disabled={saving}>
+              <Text style={{ color: saving ? theme.subtext : theme.primary }}>
+                {saving ? "Saving..." : "Save"}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -229,16 +260,14 @@ export default function ExpenseModal({
           value={date}
           mode="date"
           display="default"
-          onChange={(event, selectedDate) => {
+          onChange={(_, selectedDate) => {
             setShowDatePicker(false);
-
             if (selectedDate) {
               setDate(selectedDate);
             }
           }}
         />
       )}
-
     </Modal>
   );
 }
@@ -255,7 +284,6 @@ function createStyleSheet(theme: Theme) {
       padding: 16,
       borderTopLeftRadius: 16,
       borderTopRightRadius: 16,
-      backgroundColor: theme.card
     },
 
     title: {
@@ -290,17 +318,26 @@ function createStyleSheet(theme: Theme) {
       justifyContent: "space-between",
       marginTop: 8,
     },
-    subtitle: {
-      fontSize: 13,
-      marginBottom: 16
-    },
+
     amountInput: {
       borderWidth: 1,
       borderRadius: 12,
       padding: 16,
       fontSize: 20,
       fontWeight: "600",
-      marginBottom: 16
-    }
+      marginBottom: 16,
+    },
+
+    errorBanner: {
+      padding: 10,
+      borderRadius: 8,
+      marginBottom: 12,
+    },
+
+    errorBannerText: {
+      color: "#FFFFFF",
+      fontSize: 13,
+      textAlign: "center",
+    },
   });
 }

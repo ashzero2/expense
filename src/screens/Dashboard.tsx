@@ -2,13 +2,15 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
+
 import ExpenseCard from "../components/ExpenseCard";
-import { initDb } from "../db/init";
 import {
   getTotalForMonth,
   listTodayExpenses,
@@ -23,39 +25,67 @@ export default function DashboardScreen() {
   const [today, setToday] = useState<Expense[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadDashboard = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const now = new Date();
+      const [total, todayExpenses] = await Promise.all([
+        getTotalForMonth(now.getFullYear(), now.getMonth()),
+        listTodayExpenses(),
+      ]);
+
+      setMonthTotal(total);
+      setToday(todayExpenses);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to load dashboard";
+      setError(message);
+      Alert.alert("Error", message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
       loadDashboard();
-    }, [])
+    }, [loadDashboard])
   );
 
-  async function loadDashboard() {
-    await initDb();
-
-    const now = new Date();
-
-    const total = await getTotalForMonth(
-      now.getFullYear(),
-      now.getMonth()
-    );
-
-    const todayExpenses = await listTodayExpenses();
-
-    setMonthTotal(total);
-    setToday(todayExpenses);
-  }
-
+  const handleSaved = useCallback(async () => {
+    setShowModal(false);
+    await loadDashboard();
+  }, [loadDashboard]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Top card */}
       <View style={[styles.card, { backgroundColor: theme.card }]}>
-        <Text style={styles.cardTitle}>This Month</Text>
-        <Text style={styles.cardAmount}>
-          ₹ {(monthTotal / 100).toFixed(2)}
+        <Text style={[styles.cardTitle, { color: theme.subtext }]}>
+          This Month
         </Text>
+        {loading ? (
+          <ActivityIndicator style={{ marginTop: 12 }} />
+        ) : (
+          <Text style={[styles.cardAmount, { color: theme.text }]}>
+            ₹ {(monthTotal / 100).toFixed(2)}
+          </Text>
+        )}
       </View>
+
+      {/* Error state */}
+      {error && (
+        <View style={[styles.errorCard, { backgroundColor: theme.danger }]}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity onPress={loadDashboard}>
+            <Text style={styles.retryText}>Tap to retry</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Recent expenses card */}
       <View style={[styles.card, { backgroundColor: theme.card }]}>
@@ -63,7 +93,9 @@ export default function DashboardScreen() {
           Today
         </Text>
 
-        {today.length === 0 ? (
+        {loading ? (
+          <ActivityIndicator style={{ marginTop: 12 }} />
+        ) : today.length === 0 ? (
           <Text style={[styles.empty, { color: theme.subtext }]}>
             No expenses today
           </Text>
@@ -78,25 +110,20 @@ export default function DashboardScreen() {
         )}
       </View>
 
-
       {/* FAB */}
-      <TouchableOpacity style={styles.fab} onPress={() => setShowModal(true)}>
-        <Ionicons name="add" size={28} color="#fff" />
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: theme.primary }]}
+        onPress={() => setShowModal(true)}
+      >
+        <Ionicons name="add" size={28} color="#FFFFFF" />
       </TouchableOpacity>
+
       <ExpenseModal
         visible={showModal}
         onClose={() => setShowModal(false)}
-        onSaved={async () => {
-          setShowModal(false);
-
-          // refresh dashboard data
-          const now = new Date();
-          setMonthTotal(
-            await getTotalForMonth(now.getFullYear(), now.getMonth())
-          );
-          setToday(await listTodayExpenses());
-        }}
+        onSaved={handleSaved}
       />
+
       {editing && (
         <ExpenseModal
           visible
@@ -123,19 +150,16 @@ const styles = StyleSheet.create({
   },
 
   card: {
-    backgroundColor: "#111827",
     borderRadius: 12,
     padding: 20,
     marginBottom: 20,
   },
 
   cardTitle: {
-    color: "#9CA3AF",
     fontSize: 14,
   },
 
   cardAmount: {
-    color: "#FFFFFF",
     fontSize: 28,
     fontWeight: "600",
     marginTop: 6,
@@ -148,76 +172,43 @@ const styles = StyleSheet.create({
   },
 
   empty: {
-    color: "#6B7280",
     fontSize: 14,
     marginTop: 12,
-  },
-
-  row: {
-    paddingVertical: 10,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#E5E7EB",
-  },
-
-  amount: {
-    fontSize: 16,
-    fontWeight: "500",
-  },
-
-  note: {
-    fontSize: 13,
-    color: "#6B7280",
-    marginTop: 2,
   },
 
   fab: {
     position: "absolute",
     right: 20,
-    bottom: 20, // ABOVE bottom bar
-    backgroundColor: "#111827",
+    bottom: 20,
     width: 56,
     height: 56,
     borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
     elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
-  expenseRow: {
-    flexDirection: "row",
+
+  errorCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 12,
-    borderBottomWidth: 0.5,
   },
 
-  expenseLeft: {
-    flex: 1,
-    marginRight: 12,
-  },
-
-  category: {
-    fontSize: 15,
+  errorText: {
+    color: "#FFFFFF",
+    fontSize: 14,
     fontWeight: "500",
   },
-  expenseCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 14,
-    borderRadius: 12,
-    marginTop: 10,
-  },
 
-  iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
-
-  expenseMiddle: {
-    flex: 1,
-    marginRight: 12,
+  retryText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    marginTop: 8,
+    textDecorationLine: "underline",
   },
 });

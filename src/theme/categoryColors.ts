@@ -4,11 +4,11 @@ import { adjustHex } from "./colorUtils";
 
 export const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   food: "fast-food-outline",
-  coffee: "cafe-outline",
-  travel: "car-outline",
+  groceries: "bag-handle-outline",
+  transport: "car-outline",
   shopping: "bag-outline",
-  bills: "receipt-outline",
-  default: "pricetag-outline",
+  entertainment: "game-controller-outline",
+  default: "ellipsis-horizontal-outline",
 };
 
 export const CATEGORY_COLOR_POOL = [
