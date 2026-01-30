@@ -16,6 +16,7 @@
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE"
       },
+      "softwareKeyboardLayoutMode": "resize",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.ash.dayspend"

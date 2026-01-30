@@ -22,10 +22,16 @@ export function useMonthNavigation(initialDate = new Date()) {
     }
   }, [month]);
 
+  const setMonthAndYear = useCallback((y: number, m: number) => {
+    setYear(y);
+    setMonth(m);
+  }, []);
+
   return {
     year,
     month,
     goToPreviousMonth,
     goToNextMonth,
+    setMonthAndYear,
   };
 }

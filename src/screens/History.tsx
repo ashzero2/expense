@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useState } from "react";
 import {
@@ -11,7 +10,9 @@ import {
   View,
 } from "react-native";
 
+import { Ionicons } from "@expo/vector-icons";
 import ExpenseCard from "../components/ExpenseCard";
+import MonthPicker from "../components/MonthPicker";
 import {
   ExpenseGroup,
   groupExpensesByDay,
@@ -27,7 +28,7 @@ const PAGE_SIZE = 30;
 
 export default function History() {
   const theme = useTheme();
-  const { year, month, goToPreviousMonth, goToNextMonth } = useMonthNavigation();
+  const { year, month, goToPreviousMonth, goToNextMonth, setMonthAndYear } = useMonthNavigation();
 
   const [groups, setGroups] = useState<ExpenseGroup[]>([]);
   const [offset, setOffset] = useState(0);
@@ -35,6 +36,7 @@ export default function History() {
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -89,16 +91,24 @@ export default function History() {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Month selector */}
       <View style={styles.monthBar}>
-        <TouchableOpacity onPress={goToPreviousMonth}>
-          <Ionicons name="chevron-back" size={20} color={theme.text} />
-        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setPickerOpen(true)}
+          style={[
+            styles.monthChip,
+            { backgroundColor: theme.card },
+          ]}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.monthText, { color: theme.text }]}>
+            {MONTHS[month]} {year}
+          </Text>
 
-        <Text style={[styles.monthText, { color: theme.text }]}>
-          {MONTHS[month]} {year}
-        </Text>
-
-        <TouchableOpacity onPress={goToNextMonth}>
-          <Ionicons name="chevron-forward" size={20} color={theme.text} />
+          <Ionicons
+            name="chevron-down"
+            size={16}
+            color={theme.subtext}
+            style={{ marginLeft: 6 }}
+          />
         </TouchableOpacity>
       </View>
 
@@ -165,6 +175,17 @@ export default function History() {
           }}
         />
       )}
+
+      <MonthPicker
+        visible={pickerOpen}
+        year={year}
+        month={month}
+        onChange={(y, m) => {
+          setMonthAndYear(y, m);
+        }}
+        onClose={() => setPickerOpen(false)}
+      />
+
     </View>
   );
 }
@@ -172,19 +193,6 @@ export default function History() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-
-  monthBar: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 16,
-  },
-
-  monthText: {
-    marginHorizontal: 12,
-    fontSize: 16,
-    fontWeight: "600",
   },
 
   dayCard: {
@@ -241,5 +249,24 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 40,
     fontSize: 14,
+  },
+
+  monthBar: {
+    paddingTop: 16,
+    paddingBottom: 8,
+    alignItems: "center",
+  },
+
+  monthChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999, // pill shape
+  },
+
+  monthText: {
+    fontSize: 15,
+    fontWeight: "600",
   },
 });

@@ -43,7 +43,7 @@ export default function ExpenseCard({
             CATEGORY_ICONS[expense.categoryId] ??
             CATEGORY_ICONS.default
           }
-          size={16}
+          size={20}
           color={colors.base}
         />
       </View>

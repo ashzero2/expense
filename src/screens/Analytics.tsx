@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -12,6 +11,8 @@ import {
 } from "react-native";
 import { BarChart, LineChart, PieChart } from "react-native-chart-kit";
 
+import { Ionicons } from "@expo/vector-icons";
+import MonthPicker from "../components/MonthPicker";
 import {
   getLastNMonthTotals,
   getMonthlyCategoryTotals,
@@ -26,12 +27,13 @@ const screenWidth = Dimensions.get("window").width;
 
 export default function Analytics() {
   const theme = useTheme();
-  const { year, month, goToPreviousMonth, goToNextMonth } = useMonthNavigation();
+  const { year, month, goToPreviousMonth, goToNextMonth, setMonthAndYear } = useMonthNavigation();
 
   const [categoryData, setCategoryData] = useState<MonthlyCategoryTotal[]>([]);
   const [trend, setTrend] = useState<MonthlyTotal[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const load = useCallback(async () => {
     let isCancelled = false;
@@ -79,7 +81,7 @@ export default function Analytics() {
 
   const pieData = categoryData.map((d, index) => ({
     name: formatCategoryName(d.categoryId),
-    amount: d.total,
+    amount: d.total / 100,
     color: PIE_COLORS[index % PIE_COLORS.length],
     legendFontColor: theme.text,
     legendFontSize: 12,
@@ -100,18 +102,25 @@ export default function Analytics() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
       >
-        {/* Month selector */}
         <View style={styles.monthBar}>
-          <TouchableOpacity onPress={goToPreviousMonth}>
-            <Ionicons name="chevron-back" size={20} color={theme.text} />
-          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setPickerOpen(true)}
+            style={[
+              styles.monthChip,
+              { backgroundColor: theme.card },
+            ]}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.monthText, { color: theme.text }]}>
+              {MONTHS[month]} {year}
+            </Text>
 
-          <Text style={[styles.monthText, { color: theme.text }]}>
-            {MONTHS[month]} {year}
-          </Text>
-
-          <TouchableOpacity onPress={goToNextMonth}>
-            <Ionicons name="chevron-forward" size={20} color={theme.text} />
+            <Ionicons
+              name="chevron-down"
+              size={16}
+              color={theme.subtext}
+              style={{ marginLeft: 6 }}
+            />
           </TouchableOpacity>
         </View>
 
@@ -224,6 +233,17 @@ export default function Analytics() {
             />
           )}
         </View>
+
+        <MonthPicker
+          visible={pickerOpen}
+          year={year}
+          month={month}
+          onChange={(y, m) => {
+            setMonthAndYear(y, m);
+          }}
+          onClose={() => setPickerOpen(false)}
+        />
+
       </ScrollView>
     </View>
   );
@@ -236,20 +256,8 @@ const styles = StyleSheet.create({
 
   scroll: {
     padding: 16,
+    paddingTop: 3,
     paddingBottom: 32,
-  },
-
-  monthBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 16,
-  },
-
-  monthText: {
-    marginHorizontal: 12,
-    fontSize: 16,
-    fontWeight: "600",
   },
 
   sectionTitle: {
@@ -282,5 +290,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 8,
     textDecorationLine: "underline",
+  },
+
+  monthBar: {
+    paddingTop: 16,
+    paddingBottom: 8,
+    alignItems: "center",
+  },
+
+  monthChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999, // pill shape
+  },
+
+  monthText: {
+    fontSize: 15,
+    fontWeight: "600",
   },
 });
