@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export const CREATE_META_TABLE = `
 CREATE TABLE IF NOT EXISTS meta (
@@ -27,6 +27,14 @@ CREATE TABLE IF NOT EXISTS expenses (
   occurred_at INTEGER NOT NULL,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
+  FOREIGN KEY (category_id) REFERENCES categories(id)
+);
+`;
+
+export const CREATE_BUDGETS_TABLE = `
+CREATE TABLE IF NOT EXISTS budgets (
+  category_id TEXT PRIMARY KEY,
+  amount INTEGER NOT NULL,
   FOREIGN KEY (category_id) REFERENCES categories(id)
 );
 `;

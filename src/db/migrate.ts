@@ -1,9 +1,10 @@
 import { all, execute, run } from "./execute";
 import {
-  CREATE_CATEGORIES_TABLE,
-  CREATE_EXPENSES_TABLE,
-  CREATE_META_TABLE,
-  SCHEMA_VERSION,
+    CREATE_BUDGETS_TABLE,
+    CREATE_CATEGORIES_TABLE,
+    CREATE_EXPENSES_TABLE,
+    CREATE_META_TABLE,
+    SCHEMA_VERSION,
 } from "./schema";
 
 async function getSchemaVersion(): Promise<number> {
@@ -24,14 +25,15 @@ async function setSchemaVersion(version: number): Promise<void> {
   );
 }
 
-
 export async function migrate(): Promise<void> {
   const current = await getSchemaVersion();
 
   if (current === 0) {
     await execute(CREATE_CATEGORIES_TABLE);
     await execute(CREATE_EXPENSES_TABLE);
-    await setSchemaVersion(2);
+    await execute(CREATE_BUDGETS_TABLE);
+    await setSchemaVersion(SCHEMA_VERSION);
+    return;
   }
 
   if (current < 2) {
@@ -50,8 +52,10 @@ export async function migrate(): Promise<void> {
       SET icon = 'pricetag-outline'
       WHERE icon IS NULL
     `);
+  }
 
-    await setSchemaVersion(2);
+  if (current < 3) {
+    await execute(CREATE_BUDGETS_TABLE);
   }
 
   await setSchemaVersion(SCHEMA_VERSION);

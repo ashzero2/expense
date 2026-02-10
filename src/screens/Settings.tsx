@@ -9,6 +9,7 @@ import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
+import BudgetModal from "../components/BudgetModal";
 import CategoryModal from "../components/CategoryModal";
 import { clearAllData } from "../db/admin";
 import { useCategories } from "../features/categories/CategoryProvider";
@@ -18,6 +19,7 @@ import { useTheme } from "../theme/useTheme";
 export default function SettingsScreen() {
   const theme = useTheme();
   const [categoryOpen, setCategoryOpen] = useState(false);
+  const [budgetOpen, setBudgetOpen] = useState(false);
   const { reload: reloadCategories } = useCategories();
 
   async function handleExport() {
@@ -105,9 +107,9 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
- {/* Categories */}
+ {/* Categories & Budgets */}
       <Text style={[styles.sectionTitle, { color: theme.subtext }]}>
-        Categories
+        Categories & Budgets
       </Text>
 
       <TouchableOpacity
@@ -118,6 +120,19 @@ export default function SettingsScreen() {
           <Ionicons name="pricetags-outline" size={20} color={theme.primary} />
           <Text style={[styles.itemText, { color: theme.text }]}>
             Manage categories
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={theme.subtext} />
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.item, { backgroundColor: theme.card }]}
+        onPress={() => setBudgetOpen(true)}
+      >
+        <View style={styles.itemLeft}>
+          <Ionicons name="wallet-outline" size={20} color={theme.primary} />
+          <Text style={[styles.itemText, { color: theme.text }]}>
+            Manage budgets
           </Text>
         </View>
         <Ionicons name="chevron-forward" size={18} color={theme.subtext} />
@@ -177,6 +192,11 @@ export default function SettingsScreen() {
       <CategoryModal
         visible={categoryOpen}
         onClose={() => setCategoryOpen(false)}
+      />
+
+      <BudgetModal
+        visible={budgetOpen}
+        onClose={() => setBudgetOpen(false)}
       />
     </View>
   );

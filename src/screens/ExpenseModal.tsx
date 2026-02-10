@@ -1,16 +1,17 @@
+import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { randomUUID } from "expo-crypto";
 import { useEffect, useMemo, useState } from "react";
 import {
-    Alert,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 import { useCategories } from "../features/categories/CategoryProvider";
@@ -159,91 +160,143 @@ export default function ExpenseModal({
         style={styles.backdrop}
       >
         <View style={[styles.container, { backgroundColor: theme.card }]}>
-          <Text style={[styles.title, { color: theme.text }]}>
-            {expense ? "Edit Expense" : "Add Expense"}
-          </Text>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={[styles.title, { color: theme.text }]}>
+              {expense ? "Edit Expense" : "Add Expense"}
+            </Text>
+            <TouchableOpacity onPress={onClose} disabled={saving} hitSlop={8}>
+              <Ionicons name="close" size={24} color={theme.subtext} />
+            </TouchableOpacity>
+          </View>
 
           {/* Validation Error */}
           {validationError && (
-            <View style={[styles.errorBanner, { backgroundColor: theme.danger }]}>
-              <Text style={styles.errorBannerText}>{validationError}</Text>
+            <View style={[styles.errorBanner, { backgroundColor: theme.danger + "18" }]}>
+              <Ionicons name="alert-circle" size={16} color={theme.danger} />
+              <Text style={[styles.errorBannerText, { color: theme.danger }]}>{validationError}</Text>
             </View>
           )}
 
           {/* Amount */}
-          <TextInput
-            placeholder="Amount (₹)"
-            placeholderTextColor={theme.subtext}
-            keyboardType="decimal-pad"
-            value={amount}
-            onChangeText={text => {
-              setAmount(text);
-              setValidationError(null);
-            }}
-            style={[
-              styles.amountInput,
-              {
-                color: theme.text,
-                borderColor: validationError && !amount.trim() ? theme.danger : theme.border,
-              },
-            ]}
-          />
+          <View style={styles.section}>
+            <View style={styles.label}>
+              <Ionicons name="cash-outline" size={16} color={theme.subtext} />
+              <Text style={[styles.labelText, { color: theme.subtext }]}>Amount</Text>
+            </View>
+            <TextInput
+              placeholder="0.00"
+              placeholderTextColor={theme.subtext}
+              keyboardType="decimal-pad"
+              value={amount}
+              onChangeText={text => {
+                setAmount(text);
+                setValidationError(null);
+              }}
+              style={[
+                styles.amountInput,
+                {
+                  color: theme.text,
+                  borderColor: validationError && !amount.trim() ? theme.danger : theme.border,
+                  backgroundColor: theme.surface,
+                },
+              ]}
+            />
+          </View>
 
           {/* Category */}
-          <View style={styles.categoryWrap}>
-            {allCategories.map(c => (
-              <TouchableOpacity
-                key={c.id}
-                onPress={() => {
-                  setCategoryId(c.id);
-                  setValidationError(null);
-                }}
-                style={[
-                  styles.category,
-                  {
-                    borderColor: categoryId === c.id ? theme.primary : theme.border,
-                    backgroundColor: categoryId === c.id ? theme.primary + "20" : "transparent",
-                  },
-                ]}
-              >
-                <Text style={{ color: categoryId === c.id ? theme.primary : theme.text }}>
-                  {c.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
+          <View style={styles.section}>
+            <View style={styles.label}>
+              <Ionicons name="pricetag-outline" size={16} color={theme.subtext} />
+              <Text style={[styles.labelText, { color: theme.subtext }]}>Category</Text>
+            </View>
+            <View style={styles.categoryWrap}>
+              {allCategories.map(c => (
+                <TouchableOpacity
+                  key={c.id}
+                  onPress={() => {
+                    setCategoryId(c.id);
+                    setValidationError(null);
+                  }}
+                  style={[
+                    styles.category,
+                    {
+                      borderColor: categoryId === c.id ? theme.primary : theme.border,
+                      backgroundColor: categoryId === c.id ? theme.primary + "20" : theme.surface,
+                    },
+                  ]}
+                >
+                  <Text style={{
+                    color: categoryId === c.id ? theme.primary : theme.text,
+                    fontSize: 13,
+                    fontWeight: categoryId === c.id ? "600" : "400",
+                  }}>
+                    {c.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
 
           {/* Date */}
-          <TouchableOpacity
-            onPress={() => setShowDatePicker(true)}
-            style={[styles.input, { justifyContent: "center", borderColor: theme.border }]}
-          >
-            <Text style={{ color: theme.text }}>{date.toDateString()}</Text>
-          </TouchableOpacity>
+          <View style={styles.section}>
+            <View style={styles.label}>
+              <Ionicons name="calendar-outline" size={16} color={theme.subtext} />
+              <Text style={[styles.labelText, { color: theme.subtext }]}>Date</Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => setShowDatePicker(true)}
+              style={[styles.dateButton, { borderColor: theme.border, backgroundColor: theme.surface }]}
+            >
+              <Text style={{ color: theme.text }}>{date.toDateString()}</Text>
+              <Ionicons name="chevron-down" size={16} color={theme.subtext} />
+            </TouchableOpacity>
+          </View>
 
           {/* Note */}
-          <TextInput
-            placeholder="Note (optional)"
-            placeholderTextColor={theme.subtext}
-            value={note}
-            onChangeText={setNote}
-            style={[styles.input, { color: theme.text, borderColor: theme.border }]}
-          />
+          <View style={styles.section}>
+            <View style={styles.label}>
+              <Ionicons name="create-outline" size={16} color={theme.subtext} />
+              <Text style={[styles.labelText, { color: theme.subtext }]}>Note</Text>
+            </View>
+            <TextInput
+              placeholder="Add a note..."
+              placeholderTextColor={theme.subtext}
+              value={note}
+              onChangeText={setNote}
+              style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.surface }]}
+            />
+          </View>
 
           {/* Actions */}
           <View style={styles.actions}>
-            <TouchableOpacity onPress={onClose} disabled={saving}>
-              <Text style={{ color: theme.subtext }}>Cancel</Text>
-            </TouchableOpacity>
-
             {expense && (
-              <TouchableOpacity onPress={handleDelete} disabled={saving}>
-                <Text style={{ color: theme.danger }}>Delete</Text>
+              <TouchableOpacity
+                onPress={handleDelete}
+                disabled={saving}
+                style={[styles.deleteButton, { borderColor: theme.danger }]}
+              >
+                <Ionicons name="trash-outline" size={16} color={theme.danger} />
+                <Text style={{ color: theme.danger, fontWeight: "500" }}>Delete</Text>
               </TouchableOpacity>
             )}
 
-            <TouchableOpacity onPress={save} disabled={saving}>
-              <Text style={{ color: saving ? theme.subtext : theme.primary }}>
+            <View style={{ flex: 1 }} />
+
+            <TouchableOpacity
+              onPress={onClose}
+              disabled={saving}
+              style={[styles.cancelButton]}
+            >
+              <Text style={{ color: theme.subtext, fontWeight: "500" }}>Cancel</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={save}
+              disabled={saving}
+              style={[styles.saveButton, { backgroundColor: saving ? theme.subtext : theme.primary }]}
+            >
+              <Text style={styles.saveButtonText}>
                 {saving ? "Saving..." : "Save"}
               </Text>
             </TouchableOpacity>
@@ -277,63 +330,127 @@ function createStyleSheet(theme: Theme) {
     },
 
     container: {
-      padding: 16,
-      borderTopLeftRadius: 16,
-      borderTopRightRadius: 16,
+      padding: 20,
+      paddingBottom: 32,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+    },
+
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 16,
     },
 
     title: {
-      fontSize: 18,
+      fontSize: 20,
+      fontWeight: "700",
+    },
+
+    section: {
+      marginBottom: 16,
+    },
+
+    label: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginBottom: 8,
+    },
+
+    labelText: {
+      fontSize: 13,
       fontWeight: "600",
-      marginBottom: 12,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
     },
 
     input: {
       borderWidth: 1,
-      borderRadius: 8,
+      borderRadius: 10,
       padding: 12,
-      marginBottom: 12,
     },
 
     categoryWrap: {
       flexDirection: "row",
       flexWrap: "wrap",
       gap: 8,
-      marginBottom: 12,
     },
 
     category: {
       borderWidth: 1,
       borderRadius: 20,
-      paddingVertical: 6,
-      paddingHorizontal: 12,
+      paddingVertical: 8,
+      paddingHorizontal: 14,
+    },
+
+    dateButton: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      borderWidth: 1,
+      borderRadius: 10,
+      padding: 12,
     },
 
     actions: {
       flexDirection: "row",
-      justifyContent: "space-between",
+      alignItems: "center",
+      gap: 12,
       marginTop: 8,
+      paddingTop: 16,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.border,
+    },
+
+    deleteButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      borderWidth: 1,
+      borderRadius: 10,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+
+    cancelButton: {
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+
+    saveButton: {
+      borderRadius: 10,
+      paddingVertical: 10,
+      paddingHorizontal: 24,
+    },
+
+    saveButtonText: {
+      color: "#FFFFFF",
+      fontWeight: "600",
+      fontSize: 15,
     },
 
     amountInput: {
       borderWidth: 1,
-      borderRadius: 12,
-      padding: 16,
-      fontSize: 20,
+      borderRadius: 10,
+      padding: 14,
+      fontSize: 22,
       fontWeight: "600",
-      marginBottom: 16,
     },
 
     errorBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
       padding: 10,
-      borderRadius: 8,
-      marginBottom: 12,
+      borderRadius: 10,
+      marginBottom: 16,
     },
 
     errorBannerText: {
-      color: "#FFFFFF",
       fontSize: 13,
-      textAlign: "center",
+      fontWeight: "500",
     },
   });
 }

@@ -90,7 +90,8 @@ export default function DashboardScreen() {
       {/* Recent expenses card */}
       <View style={[styles.card, { backgroundColor: theme.card }]}>
         <Text style={[styles.sectionTitle, { color: theme.text }]}>
-          Today
+          {/* total of amount today */}
+          Today ₹ {(today.reduce((sum, expense) => sum + expense.amount, 0) / 100).toFixed(2)}
         </Text>
 
         {loading ? (
