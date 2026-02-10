@@ -10,6 +10,7 @@ export async function seedCategories(): Promise<void> {
     return;
   }
 
+  const now = Date.now();
   for (const c of DEFAULT_CATEGORIES) {
     await run(
       `
@@ -18,15 +19,17 @@ export async function seedCategories(): Promise<void> {
         name,
         color,
         icon,
+        is_system,
         created_at
-      ) VALUES (?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?)
       `,
       [
         c.id,
         c.name,
         c.color,
-        c.icon,
-        c.createdAt,
+        c.icon ?? "pricetag-outline",
+        1, // system category
+        c.createdAt ?? now,
       ]
     );
   }

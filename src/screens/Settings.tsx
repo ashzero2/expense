@@ -1,19 +1,24 @@
 
 import {
-  documentDirectory,
-  writeAsStringAsync,
+    documentDirectory,
+    writeAsStringAsync,
 } from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
-import { clearAllExpenses } from "../db/admin";
+import { useState } from "react";
+import CategoryModal from "../components/CategoryModal";
+import { clearAllData } from "../db/admin";
+import { useCategories } from "../features/categories/CategoryProvider";
 import { exportExpensesCsv } from "../features/expenses/expenses.export";
 import { useTheme } from "../theme/useTheme";
 
 export default function SettingsScreen() {
   const theme = useTheme();
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const { reload: reloadCategories } = useCategories();
 
   async function handleExport() {
     try {
@@ -50,7 +55,8 @@ export default function SettingsScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              await clearAllExpenses();
+              await clearAllData();
+              reloadCategories();
               Alert.alert("Success", "All data has been cleared");
             } catch {
               Alert.alert("Error", "Failed to clear data");
@@ -99,6 +105,25 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
+ {/* Categories */}
+      <Text style={[styles.sectionTitle, { color: theme.subtext }]}>
+        Categories
+      </Text>
+
+      <TouchableOpacity
+        style={[styles.item, { backgroundColor: theme.card }]}
+        onPress={() => setCategoryOpen(true)}
+      >
+        <View style={styles.itemLeft}>
+          <Ionicons name="pricetags-outline" size={20} color={theme.primary} />
+          <Text style={[styles.itemText, { color: theme.text }]}>
+            Manage categories
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={theme.subtext} />
+      </TouchableOpacity>
+
+
       {/* DANGER */}
       <Text
         style={[
@@ -146,8 +171,13 @@ export default function SettingsScreen() {
           { color: theme.subtext },
         ]}
       >
-        Version 1.0.0
+        Version 1.1.0
       </Text>
+
+      <CategoryModal
+        visible={categoryOpen}
+        onClose={() => setCategoryOpen(false)}
+      />
     </View>
   );
 }
@@ -191,5 +221,33 @@ const styles = StyleSheet.create({
     marginTop: 32,
     textAlign: "center",
     fontSize: 13,
+  },
+
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    marginTop: 24,
+    marginBottom: 8,
+  },
+
+  item: {
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+
+  itemText: {
+    fontSize: 15,
+    fontWeight: "500",
+  },
+
+  itemLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
 });

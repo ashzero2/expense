@@ -6,15 +6,15 @@ import {
   View,
 } from "react-native";
 
+import { useCategories } from "../features/categories/CategoryProvider";
 import type { Expense } from "../features/expenses/expenses.types";
-import { formatCategoryName } from "../shared/config";
-import { CATEGORY_ICONS, getCategoryColor } from "../theme/categoryColors";
+import { getCategoryColor } from "../theme/categoryColors";
 import { useTheme } from "../theme/useTheme";
 
 type Props = {
   expense: Expense;
   onPress?: (expense: Expense) => void;
-  showCategory?: boolean; // optional for reuse
+  showCategory?: boolean;
 };
 
 export default function ExpenseCard({
@@ -23,7 +23,12 @@ export default function ExpenseCard({
   showCategory = true,
 }: Props) {
   const theme = useTheme();
+  const { getCategory } = useCategories();
+  const category = getCategory(expense.categoryId);
   const colors = getCategoryColor(expense.categoryId);
+
+  const iconName = category?.icon ?? "ellipsis-horizontal-outline";
+  const displayName = category?.name ?? expense.categoryId;
 
   const Content = (
     <View
@@ -33,18 +38,11 @@ export default function ExpenseCard({
       ]}
     >
       {/* Icon */}
-      <View
-        style={[
-          styles.iconWrap
-        ]}
-      >
+      <View style={styles.iconWrap}>
         <Ionicons
-          name={
-            CATEGORY_ICONS[expense.categoryId] ??
-            CATEGORY_ICONS.default
-          }
+          name={iconName as any}
           size={20}
-          color={colors.base}
+          color={category?.color ?? colors.base}
         />
       </View>
 
@@ -52,7 +50,7 @@ export default function ExpenseCard({
       <View style={styles.middle}>
         {showCategory && (
           <Text style={[styles.category, { color: theme.text }]}>
-            {formatCategoryName(expense.categoryId)}
+            {displayName}
           </Text>
         )}
 

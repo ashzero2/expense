@@ -2,18 +2,18 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { randomUUID } from "expo-crypto";
 import { useEffect, useMemo, useState } from "react";
 import {
-  Alert,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
-import { listCategories } from "../features/categories/categories.repo";
+import { useCategories } from "../features/categories/CategoryProvider";
 import { createExpense, deleteExpense, updateExpense } from "../features/expenses/expenses.repo";
 import { Expense } from "../features/expenses/expenses.types";
 import { Theme } from "../theme/theme";
@@ -36,11 +36,11 @@ export default function ExpenseModal({
 }: Props) {
   const theme = useTheme();
   const styles = useMemo(() => createStyleSheet(theme), [theme]);
+  const { categories: allCategories } = useCategories();
 
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [date, setDate] = useState<Date>(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -48,10 +48,6 @@ export default function ExpenseModal({
 
   useEffect(() => {
     if (!visible) return;
-
-    listCategories()
-      .then(cats => setCategories(cats.map(c => ({ id: c.id, name: c.name }))))
-      .catch(() => Alert.alert("Error", "Failed to load categories"));
 
     if (expense) {
       setAmount((expense.amount / 100).toString());
@@ -195,7 +191,7 @@ export default function ExpenseModal({
 
           {/* Category */}
           <View style={styles.categoryWrap}>
-            {categories.map(c => (
+            {allCategories.map(c => (
               <TouchableOpacity
                 key={c.id}
                 onPress={() => {

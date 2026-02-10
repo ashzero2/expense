@@ -13,12 +13,3 @@ export const PIE_COLORS = [
 ];
 
 export const CURRENCY_SYMBOL = "₹";
-
-/**
- * Formats a category ID to a display name
- * e.g., "food" -> "Food", "entertainment" -> "Entertainment"
- */
-export function formatCategoryName(categoryId: string): string {
-  if (!categoryId) return "";
-  return categoryId.charAt(0).toUpperCase() + categoryId.slice(1).toLowerCase();
-}

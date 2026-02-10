@@ -1,21 +1,21 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
 import ExpenseCard from "../components/ExpenseCard";
 import MonthPicker from "../components/MonthPicker";
 import {
-  ExpenseGroup,
-  groupExpensesByDay,
+    ExpenseGroup,
+    groupExpensesByDay,
 } from "../features/expenses/expense.group";
 import { listExpensesForMonth } from "../features/expenses/expenses.repo";
 import type { Expense } from "../features/expenses/expenses.types";
@@ -28,7 +28,7 @@ const PAGE_SIZE = 30;
 
 export default function History() {
   const theme = useTheme();
-  const { year, month, goToPreviousMonth, goToNextMonth, setMonthAndYear } = useMonthNavigation();
+  const { year, month, setMonthAndYear } = useMonthNavigation();
 
   const [groups, setGroups] = useState<ExpenseGroup[]>([]);
   const [offset, setOffset] = useState(0);

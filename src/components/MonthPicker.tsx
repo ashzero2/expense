@@ -1,11 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { MONTHS } from "../shared/config";
 import { useTheme } from "../theme/useTheme";
-
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
 
 type Props = {
   visible: boolean;

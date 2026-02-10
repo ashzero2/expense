@@ -2,6 +2,7 @@ export type Category = {
   id: string;
   name: string;
   color: string;
-  icon: string | null;
+  icon: string;
+  isSystem: boolean;
   createdAt: number;
 };

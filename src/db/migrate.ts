@@ -28,11 +28,30 @@ async function setSchemaVersion(version: number): Promise<void> {
 export async function migrate(): Promise<void> {
   const current = await getSchemaVersion();
 
-  if (current >= SCHEMA_VERSION) return;
-
-  if (current < 1) {
+  if (current === 0) {
     await execute(CREATE_CATEGORIES_TABLE);
     await execute(CREATE_EXPENSES_TABLE);
+    await setSchemaVersion(2);
+  }
+
+  if (current < 2) {
+    await execute(`
+      ALTER TABLE categories
+      ADD COLUMN is_system INTEGER NOT NULL DEFAULT 0
+    `);
+
+    await execute(`
+      UPDATE categories
+      SET is_system = 1
+    `);
+
+    await execute(`
+      UPDATE categories
+      SET icon = 'pricetag-outline'
+      WHERE icon IS NULL
+    `);
+
+    await setSchemaVersion(2);
   }
 
   await setSchemaVersion(SCHEMA_VERSION);

@@ -1,15 +1,5 @@
-import { Ionicons } from "@expo/vector-icons";
 import { palette } from "./colors";
 import { adjustHex } from "./colorUtils";
-
-export const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
-  food: "fast-food-outline",
-  groceries: "bag-handle-outline",
-  transport: "car-outline",
-  shopping: "bag-outline",
-  entertainment: "game-controller-outline",
-  default: "ellipsis-horizontal-outline",
-};
 
 export const CATEGORY_COLOR_POOL = [
   palette.blue,

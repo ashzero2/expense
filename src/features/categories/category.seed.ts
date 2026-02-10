@@ -34,8 +34,8 @@ export const DEFAULT_CATEGORIES: Category[] = [
   {
     id: "others",
     name: "Others",
-    color: "#A855F7",
-    icon: "film",
+    color: "#6B7280",
+    icon: "ellipsis-horizontal",
     createdAt: now,
   },
 ];

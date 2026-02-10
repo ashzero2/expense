@@ -1,25 +1,26 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { BarChart, LineChart, PieChart } from "react-native-chart-kit";
 
 import { Ionicons } from "@expo/vector-icons";
 import MonthPicker from "../components/MonthPicker";
+import { useCategories } from "../features/categories/CategoryProvider";
 import {
-  getLastNMonthTotals,
-  getMonthlyCategoryTotals,
-  MonthlyCategoryTotal,
-  MonthlyTotal,
+    getLastNMonthTotals,
+    getMonthlyCategoryTotals,
+    MonthlyCategoryTotal,
+    MonthlyTotal,
 } from "../features/expenses/expenses.repo";
-import { formatCategoryName, MONTHS, PIE_COLORS } from "../shared/config";
+import { MONTHS, PIE_COLORS } from "../shared/config";
 import { useMonthNavigation } from "../shared/hooks/useMonthNavigation";
 import { useTheme } from "../theme/useTheme";
 
@@ -27,7 +28,8 @@ const screenWidth = Dimensions.get("window").width;
 
 export default function Analytics() {
   const theme = useTheme();
-  const { year, month, goToPreviousMonth, goToNextMonth, setMonthAndYear } = useMonthNavigation();
+  const { year, month, setMonthAndYear } = useMonthNavigation();
+  const { getCategory } = useCategories();
 
   const [categoryData, setCategoryData] = useState<MonthlyCategoryTotal[]>([]);
   const [trend, setTrend] = useState<MonthlyTotal[]>([]);
@@ -71,18 +73,21 @@ export default function Analytics() {
     load();
   }, [load]);
 
+  // Helper: resolve category name from context, fall back to ID
+  const getCategoryName = (id: string) => getCategory(id)?.name ?? id;
+
   // Safe chart data - prevent crashes with empty arrays
   const barChartData = {
-    labels: categoryData.length > 0 ? categoryData.map(d => formatCategoryName(d.categoryId)) : [""],
+    labels: categoryData.length > 0 ? categoryData.map(d => getCategoryName(d.categoryId)) : [""],
     datasets: [{
       data: categoryData.length > 0 ? categoryData.map(d => d.total / 100) : [0],
     }],
   };
 
   const pieData = categoryData.map((d, index) => ({
-    name: formatCategoryName(d.categoryId),
+    name: getCategoryName(d.categoryId),
     amount: d.total / 100,
-    color: PIE_COLORS[index % PIE_COLORS.length],
+    color: getCategory(d.categoryId)?.color ?? PIE_COLORS[index % PIE_COLORS.length],
     legendFontColor: theme.text,
     legendFontSize: 12,
   }));
